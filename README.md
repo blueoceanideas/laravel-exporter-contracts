@@ -172,6 +172,8 @@ Route::get('/exporter/group/{group?}', ...);
 
 To scrape this specifc metric (and other metrics that are associated with this group), the endpoint is `/exporter/group/metrics-reloaded` (i.e. `http://localhost/exporter/group/metrics-reloaded`).
 
+A scrape updates only the metrics of its group. Each scrape renders into a fresh in-memory registry, so a series that no metric sets any more is no longer rendered, and a long-lived Octane worker does not keep it. A registry you pass to `Exporter::setRegistry($registry, 'metrics-reloaded')` (an APCu or Redis one, say) keeps its series between scrapes.
+
 ## Sending string responses
 
 In some cases you may want to export the string-alike, Prometheus-formatted response without using the internal metrics.
