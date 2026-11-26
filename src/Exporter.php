@@ -113,22 +113,27 @@ class Exporter
     }
 
     /**
-     * Add the registered metrics to the Prometheus registry.
+     * Add the group's registered metrics to its Prometheus registry.
+     *
+     * Only the metrics shown on the group are updated. A registry set with setRegistry() keeps its
+     * series between runs; otherwise each run gets a fresh one, so a series no metric sets any more
+     * (a job no longer measured) is not rendered again. A static registry would keep every series an
+     * Octane worker ever set.
      *
      * @param  string  $group
      * @return \Prometheus\CollectorRegistry
      */
     public static function run(string $group = 'metrics')
     {
+        $registry = static::$registries[$group] ?? new CollectorRegistry(new InMemory);
+
         foreach (static::$metrics as $metricClass) {
-            if (! isset(static::$registries[$metricClass::$showsOnGroup])) {
-                static::setRegistry(new CollectorRegistry(new InMemory), $metricClass::$showsOnGroup);
+            if ($metricClass::$showsOnGroup !== $group) {
+                continue;
             }
 
             try {
-                $metric = new $metricClass(
-                    static::$registries[$metricClass::$showsOnGroup]
-                );
+                $metric = new $metricClass($registry);
 
                 /** @var \RenokiCo\LaravelExporter\Metric $metric */
                 $metric->update();
@@ -144,7 +149,7 @@ class Exporter
             static::$registeredMetrics[$metricClass] = $metric;
         }
 
-        return static::$registries[$group] ?? new CollectorRegistry(new InMemory);
+        return $registry;
     }
 
     /**
